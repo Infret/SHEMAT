@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resourses/images/nQRfca4HlQY.jpg</file>
+        <file>resourses/images/qBgYCnLqC74.jpg</file>
+        <file>resourses/images/free-icon-data-science-8329296.png</file>
+        <file>resourses/images/free-icon-data-science-8201859.png</file>
+        <file>resourses/images/dope-roblox.gif</file>
+        <file>resourses/images/moving-formation.gif</file>
+        <file>resourses/images/cool-skeleton-on-a-motorcycle-cool.gif</file>
+        <file>resourses/images/funny-awesome.gif</file>
+        <file>resourses/images/background_glow.gif</file>
+    </qresource>
+</RCC>
