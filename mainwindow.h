@@ -35,9 +35,6 @@
 #include <QProgressDialog>
 #include <QRegularExpression>
 
-
-
-
 #include "compaundgen.h"
 #include "neutronevaporation.h"
 #include "scattering.h"
@@ -52,7 +49,6 @@
 
 #include "targetstripperdialog.h"
 #include "stripperdialog.h"
-
 
 #include "optimizationdialog.h"
 
@@ -79,240 +75,200 @@ class MainWindow : public QMainWindow
         double density;
         bool Targetflag; // true = основной, false = подложка
     };
+
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
-    void onGenerateClicked(); // слот для обработки нажатия кнопки
-//    void onComboBoxIndexChanged(int index);
+    void onGenerateClicked();
     void saveToFile();
     void writeToFile(const QString& data);
-
-
     void plotGraph(const QString &xParam, const QString &yParam);
     void SetAxis();
     void updateAxes();
-
     void Modeling();
-    void debugShow(double x,double y, double x_prime,double y_prime,int Q, double BR);
+    void debugShow(double x, double y, double x_prime, double y_prime, int Q, double BR);
     void plotHistogram(const QVector<double>& data, int bins, const QString& paramName = QString());
-
     void onTargetSelectionChanged();
     void updateParametersFromSelection();
-
-
-
     void applyReactionPreset(const QString &proj, const QString &prod, const QString &channel,
-                              double thickness, double energy, double density,
-                              const QVector<TargetLayer> &layers,
-                              int compoundZ = -1, int compoundA = -1,
-                              int neutrons = -1, int protons = -1, int alphas = -1);
+                             double thickness, double energy, double density,
+                             const QVector<TargetLayer> &layers,
+                             int compoundZ = -1, int compoundA = -1,
+                             int neutrons = -1, int protons = -1, int alphas = -1);
+    void clearLayersUI();
+    void addLayerToUI(const QString &symbol, int A, double stoich, double thickness, double density);
+    void addElementRowToLayer(QWidget *layerGroupWidget, const QString &symbol, int A, double stoich);
+    void loadSeparatorConfig();
+    void updateSeparator();
+    void updateSeparatorScheme();
+    void showTrajectories();
 
-
-     void clearLayersUI();
-     void addLayerToUI(const QString &symbol, int A, double stoich, double thickness, double density);
-     void addElementRowToLayer(QWidget *layerGroupWidget, const QString &symbol, int A, double stoich);
-//     void carbon_layer_switcher(bool carbon_switch);
-     void loadSeparatorConfig();
-     void updateSeparator();
-     void updateSeparatorScheme(); // обновляет отображение схемы
-     void showTrajectories();
-
-
+//    void onProductChanged(int index);
 
 
 
-
-
+//    void onMultiProductToggled(bool checked);
+//    void onApplyFilterClicked();
 
 private:
-
-    double lr;
-    double Q;
-    int Q1;
-    double x_prime;
-    double y_prime;
-    double E;
-    double x;
-    double y;
-    double theta;
-    double phi;
-    double BR;
-    double mean;
-    double variance;
-    double U;
-    double Z ;
-    double A;
-    double Mass;
-    double density;
-    double mt;
-    double Zt;
-    double At;
-    double l;
-    double a;
-    double b;
-    int N;
-    int numNeutrons;
-    int numProtons;
-    int numAlphas;
-    int brk;
-    bool spAsked;
-    bool snAsked;
-    bool carbon_switch;
-    bool targetflag;
+    // Физические переменные
+    double lr, Q, Q1, x_prime, y_prime, E, x, y, theta, phi, BR;
+    double mean, variance, U, Z, A, Mass, density, mt, Zt, At, l, a, b;
+    int N, numNeutrons, numProtons, numAlphas, brk;
+    bool spAsked, snAsked, carbon_switch, targetflag;
     double tiltBeta = 0;
     bool l_is_along_beam = false;
 
-
-
-
-
-
-
-
-
-
-    QString Data;
-    QString infoData;
+    QString Data, infoData;
     QStringList modelingLogData;
     QFile* logFile = nullptr;
 
-    Ui::MainWindow *ui;
+    Ui::MainWindow *ui; // пока оставлен для совместимости, позже удалим
 
-    QChartView *chartView;
-    QScatterSeries *series;
-    QChart *chart;
-    QProgressBar *progressBar;
+    // График
+    QChartView *m_chartView;
+    QScatterSeries *m_series;
+    QChart *m_chart;
+    QProgressBar *m_progressBar;
+    QBarSet *m_barSet;
+    QBarSeries *m_barSeries;
 
-    QBarSet *barSet;
-    QBarSeries *barSeries;
-
+    // Модели
     CompaundGen *compaundGen;
     NeutronEvaporation *neutronEvaporation;
     Scattering *scattering;
     ChargeCalc *chargecalc;
-
     angulardistributionmodel *m_angularDistributionModel;
-
     CarbonEnergyLoss *carbonenergyloss;
 
+    // Таблица элементов
     PeriodicTable* m_periodicTable;
     ElementSelector* m_elementSelector;
 
+    // Массивы данных
+    QVector<double> xValues, yValues, xPrimeValues, yPrimeValues, energyValues;
+    QVector<int> qValues;
+    QVector<double> xData, yData;
 
-    // Массивы для хранения данных
-       QVector<double> xValues;        // Координаты x
-       QVector<double> yValues;        // Координаты y
-       QVector<double> xPrimeValues;   // Угловые координаты x'
-       QVector<double> yPrimeValues;   // Угловые координаты y'
-       QVector<double> energyValues;   // Энергии
-       QVector<int> qValues;           // Заряды Q
+    // Слои мишени
+    QVector<TargetLayer> targetLayers;
+    QVector<QWidget*> layerWidgets;
+    void onAddLayerClicked();
+    void onRemoveLayerClicked(QWidget* layerWidget);
+    QVector<TargetLayer> getLayersFromUI();
 
-       QVector<double> xData, yData;
+    // Сепаратор
+    SeparatorConfig m_separatorConfig;
+    Separator m_separator;
+    bool m_useOptics = false;
+    bool m_configChanged = false;
+    int m_passedCount = 0;
+    SeparatorView *m_separatorView;
+    TrajectoryWindow *m_trajWindow = nullptr;
+    QVector<QVector<QPointF>> m_allXZ, m_allYZ;
+    QPlainTextEdit *m_configEditor;
+    void applyConfig();
+    void loadDefaultConfig();
+    void loadConfigFromFile();
+    void saveConfigToFile();
+    void applyConfigFromEditor();
+    void loadDefaultConfigToEditor();
 
+    void loadBeamFromFile();
 
+    // Распределения по точкам
+    struct PointData {
+        QString pointName;
+        QVector<double> x, y, xp, yp, energy, charge, br;
+    };
+    QVector<PointData> m_distributions;
+    QComboBox *m_pointCombo;
+    void addTrackToDistributions(const Particle& p);
+    void getDataForPoint(int pointIndex, const QString& param, QVector<double>& data);
+    void printRMSDistribution();
+    void printLossStatistics();
+    QLabel *m_transmissionLabel;
 
+    static int scaledFontSize(int);
 
+    // Флаги и настройки
+    bool m_applyTargetStripperToBeam;
+    QCheckBox *m_applyTargetStripperCheck;
+    double m_stripperThickness = 1.0;
+    void showStripperDialog();
+    void showOptimizationDialog();
+    QVector<Particle> m_loadedBeam;
+    QVector<Particle> generateFittingBeam(int numParticles);
+    bool m_generatorsReady = false;
+    void updateStatsUI();
+    QTableWidget *m_statsTable;
 
-       QVector<TargetLayer> targetLayers;
-       QVector<QWidget*> layerWidgets;
-       void onAddLayerClicked();
-       void onRemoveLayerClicked(QWidget* layerWidget);
-       QVector<TargetLayer> getLayersFromUI();
+    // Отладочные векторы для точки "До мишени"
+    QVector<double> m_x_before_target, m_y_before_target, m_xp_before_target, m_yp_before_target, m_E_before_target;
 
+    // Отладочные векторы для загруженного пучка
+    QVector<double> m_loaded_x, m_loaded_y, m_loaded_xp, m_loaded_yp, m_loaded_E, m_loaded_Q;
 
-       ///кал для отладки МНТ
-       double degreestoradians(double degrees) const {
-               return degrees * M_PI / 180.0;
-           }
-
-
-
-
-       SeparatorConfig m_separatorConfig;
-       Separator m_separator;
-       bool m_useOptics = false;
-       bool m_configChanged = false;
-       int m_passedCount = 0;
-       SeparatorView *m_separatorView;
-       TrajectoryWindow *m_trajWindow = nullptr;
-       QVector<QVector<QPointF>> m_allXZ, m_allYZ; // для накопления траекторий
-       QPlainTextEdit *m_configEditor;  // текстовый редактор для конфигурации
-       void applyConfig();              // слот для применения конфигурации из редактора
-       void loadDefaultConfig();        // загрузить пример конфигурации по умолчанию
-       void loadConfigFromFile();
-       void saveConfigToFile();
-       void applyConfigFromEditor();
-       void loadDefaultConfigToEditor();
-
-
-
-       void loadBeamFromFile();
-
-
-
-
-
-       // Структура для хранения распределений по точкам
-       struct PointData {
-           QString pointName;
-           QVector<double> x, y, xp, yp, energy, charge, br;
-       };
-       QVector<PointData> m_distributions;   // все точки
-
-       // Виджет для выбора точки
-       QComboBox *m_pointCombo;
-
-       // Метод для обновления данных в m_distributions из трека частицы
-       void addTrackToDistributions(const Particle& p);
-
-       // Метод для получения данных для графика/гистограммы по выбранной точке
-       void getDataForPoint(int pointIndex, const QString& param, QVector<double>& data);
-
-       void printRMSDistribution();
-       void printLossStatistics();
-
-       QLabel *m_transmissionLabel;
+    // --- ВИДЖЕТЫ ИНТЕРФЕЙСА (все с префиксом m_) ---
+    // Вкладки
+    QTabWidget *m_tabWidget;
 
 
-       static int scaledFontSize(int);
+    QGroupBox *m_stripperGroup;
+    QCheckBox *m_stripperCheckBox;
+    QLineEdit *m_stripperThicknessEdit;
+
+    // Генерация
+    QLineEdit *m_meanInput, *m_varianceInput, *m_UInput, *m_aInput, *m_bInput;
+    QLineEdit *m_NInput, *m_neutrInput, *m_protInput, *m_alphaInput;
+    QLineEdit *m_ZInput, *m_AInput, *m_angleInput;
+    QPushButton *m_generateButton;
+
+    // Мишень
+    QScrollArea *m_targetScrollArea;
+    QWidget *m_targetContainer;
+    QVBoxLayout *m_targetLayout;
+    QPushButton *m_addLayerButton;
+
+    // Ионная оптика
+    QPushButton *m_loadBtn, *m_saveBtn, *m_applyBtn;
+    QCheckBox *m_useOpticsCheck;
+    QPushButton *m_optimizeBtn, *m_showTrajBtn;
+
+    // Графики
+    QComboBox *m_xParamComboBox, *m_yParamComboBox;
+    QPushButton *m_plotButton, *m_histogramButton;
+    QWidget *m_chartContainer;
+    QLineEdit *m_xMinInput, *m_xMaxInput, *m_yMinInput, *m_yMaxInput;
+    QPushButton *m_updateAxesButton;
+
+    // Метод настройки UI
+    void setupUI();
 
 
-       bool m_applyTargetStripperToBeam;
-       QCheckBox *m_applyTargetStripperCheck;
 
-       double m_stripperThickness = 1.0; // значение по умолчанию
-       void showStripperDialog();
+    void applyOptimizedParams(const QVector<double>& values);
 
+    // Элементы GUI
+//    QCheckBox *m_multiProductCheck;
+//    QSpinBox *m_filterZSpin;
+//    QSpinBox *m_filterASpin;
+//    QPushButton *m_applyFilterBtn;
 
-       void showOptimizationDialog();
+    // Хранилище всех частиц
+//    QVector<Particle> m_allParticles;
 
-       QVector<Particle> m_loadedBeam;
-
-       QVector<Particle> generateFittingBeam(int numParticles);
-       bool m_generatorsReady = false;
-
-       void updateStatsUI();
-
-       QTableWidget *m_statsTable = nullptr;
-
-
-
-       QVector<double> m_x_before_target;
-       QVector<double> m_y_before_target;
-       QVector<double> m_xp_before_target;
-       QVector<double> m_yp_before_target;
-       QVector<double> m_E_before_target;
+    // Вспомогательные методы
+//    double calculateMass(int Z, int A);
+//    QVector<Particle> filterParticles(int Z, int A) const;
+//    QComboBox *m_productCombo;
+//    QVector<QPair<int,int>> m_availableProducts;
 
 
-       QVector<double> m_loaded_x;
-       QVector<double> m_loaded_y;
-       QVector<double> m_loaded_xp;
-       QVector<double> m_loaded_yp;
-       QVector<double> m_loaded_E;
-       QVector<double> m_loaded_Q;
 
+    double m_baseFontSize = 9.0;
 };
 
 #endif // MAINWINDOW_H
