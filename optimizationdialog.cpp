@@ -270,6 +270,7 @@ void OptimizationDialog::onFinished(bool success, const QVector<double>& optimal
 {
     if (success) {
          QStringList valuesStr;
+         emit optimizationFinished(optimalValues);
          for (double v : optimalValues) {
              valuesStr << QString::number(v, 'f', 6);
          }
