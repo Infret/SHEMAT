@@ -6,7 +6,8 @@
 SeparatorElement::SeparatorElement(ElementType type)
     : m_type(type), m_len(0), m_aperture(1e6), m_gradient(0), m_gap(0),
       m_voltage(0), m_yAperture(0.15), m_radius(0), m_xAperture(0.1),
-      m_yApertureDip(0.05), m_angle(0), m_R(1), m_correction(0.05), m_fringe(0.2), m_name("")
+      m_yApertureDip(0.05), m_angle(0), m_R(1), m_correction(0.05), m_fringe(0.2),
+      m_B(0), m_name("")
 {}
 void SeparatorElement::setParameters(double param1, double param2, double param3,
                                      double param4, double param5, double param6)
@@ -25,10 +26,10 @@ void SeparatorElement::setParameters(double param1, double param2, double param3
         qDebug() << "setParameters Quad: name=" << m_name << " aperture=" << m_aperture;
         break;
     case ElementType::Dipole:
-        m_len = param1;       // эффективная длина (м)
-        m_gap = param2;       // зазор (м)
-        m_radius = param3;
-        m_xAperture = param4;
+        m_len          = param1;   // длина дуги
+        m_gap          = param2;   // зазор
+        m_B            = param3;   // поле в Тл
+        m_xAperture    = param4;
         m_yApertureDip = param5;
         break;
     case ElementType::DipoleEdge:
@@ -117,19 +118,28 @@ void SeparatorElement::transport(Particle& p) const
     }
 
     case ElementType::Dipole: {
-        // Вычисляем поле (кГс) по текущим параметрам частицы
+        // Магнитная жёсткость частицы (кГс·м)
         double brho = 1.439 * std::sqrt(p.mass * p.energy) / std::abs(p.charge);
-        double B = brho / m_radius;   // поле в кГс
-//        qDebug()<<"BBBBB"<<B<<"Charge:"<<p.charge;
-        double R = m_radius;          // радиус траектории (м)
-        double theta = m_len / R;     // угол поворота (рад)
 
-        // Матрица транспорта
+        // Поле ФИКСИРОВАНО — как в реальном магните
+        double B_kG = m_B * 10.0;              // Тл → кГс
+        if (B_kG <= 0.0) {
+            // Если поле не задано — просто дрейф (на случай старых конфигов)
+            p.x += m_len * std::tan(p.xp);
+            p.y += m_len * std::tan(p.yp);
+            break;
+        }
+
+        // Радиус для КАЖДОЙ частицы свой
+        double R_actual = brho / B_kG;
+        double theta    = m_len / R_actual;    // реальный угол поворота
+
+        // Поворот в горизонтальной плоскости
         double x_in = p.x, xp_in = p.xp;
-        p.x = x_in * std::cos(theta) + R * std::sin(theta) * xp_in;
-        p.xp = -(1.0 / R) * std::sin(theta) * x_in + std::cos(theta) * xp_in;
+        p.x  = x_in * std::cos(theta) + R_actual * std::sin(theta) * xp_in;
+        p.xp = -(1.0 / R_actual) * std::sin(theta) * x_in + std::cos(theta) * xp_in;
 
-        // Вертикаль – дрейф
+        // Вертикаль — дрейф
         p.y += m_len * std::tan(p.yp);
         break;
     }

@@ -45,6 +45,7 @@ private:
     double m_radius;       // радиус диполя (м) (вместо m_B)
     double m_xAperture;    // горизонтальная апертура (м) для Dipole
     double m_yApertureDip; // вертикальная апертура (м) для Dipole
+    double m_B;
     // Для DipoleEdge:
     double m_angle;        // угол наклона грани (рад)
     double m_R;            // радиус кривизны (м) (используется в краях)

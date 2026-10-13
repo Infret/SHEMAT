@@ -35,6 +35,7 @@ public:
 
 private:
     QVector<ConfigCommand> m_commands;
+
 };
 
 #endif // SEPARATORCONFIG_H

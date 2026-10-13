@@ -12,6 +12,7 @@ struct TrackPoint {
     double energy;
     double mass;
     int charge;
+
     QString name;   // название точки (например, "Мишень", "После стрипера", "Quad1" и т.д.)
 };
 
@@ -20,6 +21,7 @@ struct Particle
     double x; double y; double xp; double yp;
     double energy; double mass; int charge;
     bool alive;
+    int Z, A;
     QVector<TrackPoint> track;
 
     Particle() : x(0), y(0), xp(0), yp(0), energy(0), mass(0), charge(0), alive(true) {}

@@ -23,6 +23,10 @@ public:
                                  const QVector<Particle>& beam,
                                  QWidget *parent = nullptr);
     ~OptimizationDialog();
+signals:
+    void optimizationFinished(const QVector<double>& optimalValues);
+
+
 
 private slots:
     void onStartOptimization();
@@ -30,6 +34,7 @@ private slots:
     void onProgress(int iteration, double target, const QVector<double>& values);
     void onFinished(bool success, const QVector<double>& optimalValues, double finalTarget);
     void onError(const QString& msg);
+
 
 private:
     void populateParamsTable();

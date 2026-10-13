@@ -80,15 +80,16 @@ bool SeparatorConfig::parseFromString(const QString& text)
             cmd.params << radius << angleDeg << gap << voltage;
         }
         else if (type == "DIPOLE") {
+            // Формат: DIPOLE B_Тл угол_град зазор угол_входа угол_выхода renter rexit
             if (parts.size() < 8) continue;
-            double radius = parts[1].toDouble();
+            double B_T     = parts[1].toDouble();   // поле в Тесла
             double angleDeg = parts[2].toDouble();
-            double gap = parts[3].toDouble();
+            double gap      = parts[3].toDouble();
             double entranceDeg = parts[4].toDouble();
-            double exitDeg = parts[5].toDouble();
-            double renter = parts[6].toDouble();
-            double rexit = parts[7].toDouble();
-            cmd.params << radius << angleDeg << gap << entranceDeg << exitDeg << renter << rexit;
+            double exitDeg     = parts[5].toDouble();
+            double renter      = parts[6].toDouble();
+            double rexit       = parts[7].toDouble();
+            cmd.params << B_T << angleDeg << gap << entranceDeg << exitDeg << renter << rexit;
         }
         else {
             qDebug() << "Unknown command:" << type;
@@ -156,44 +157,45 @@ Separator SeparatorConfig::buildSeparator(double energy, double mass, int charge
             sep.addElement(elem);
         }
         else if (cmd.type == "DIPOLE") {
-            double radius = cmd.params[0];
+            double B_T      = cmd.params[0];      // Тл
             double angleDeg = cmd.params[1];
-            double gap = cmd.params[2];
+            double gap      = cmd.params[2];
             double entranceDeg = cmd.params[3];
-            double exitDeg = cmd.params[4];
-            double renter = cmd.params[5];
-            double rexit = cmd.params[6];
+            double exitDeg     = cmd.params[4];
+            double renter      = cmd.params[5];
+            double rexit       = cmd.params[6];
+
+            // Магнитная жёсткость референсной частицы (кГс·м)
+            double brho_ref = 1.439 * std::sqrt(mass * energy) / std::abs(charge);
+            double B_kG     = B_T * 10.0;                // Тл → кГс
+            double R_ref    = brho_ref / B_kG;           // радиус референсной траектории (м)
 
             double angleRad = angleDeg * degToRad;
-            double arc_length = std::abs(radius) * angleRad;
+            double arc_length = R_ref * angleRad;        // длина дуги
             double entranceRad = entranceDeg * degToRad;
-            double exitRad = exitDeg * degToRad;
-
-
-//            qDebug() << "Создаём диполь: radius=" << radius << "angleDeg=" << angleDeg << "arc_length=" << arc_length;
+            double exitRad     = exitDeg * degToRad;
 
             // Входной край
             if (std::abs(entranceRad) > 1e-6) {
                 SeparatorElement edge(ElementType::DipoleEdge);
                 edge.setName(QString("DipoleEntranceEdge%1").arg(dipoleCount));
-                edge.setParameters(entranceRad, radius, renter);
+                edge.setParameters(entranceRad, R_ref, renter);
                 sep.addElement(edge);
             }
 
-            // Тело диполя
+            // Тело диполя — передаём поле B
             SeparatorElement dipole(ElementType::Dipole);
             dipole.setName(QString("Dipole%1").arg(dipoleCount));
             double xAperture = 0.1;
             double yAperture = gap / 2.0;
-            // Важно: третий параметр – радиус (для вычисления поля на лету)
-            dipole.setParameters(arc_length, gap, radius, xAperture, yAperture);
+            dipole.setParameters(arc_length, gap, B_T, xAperture, yAperture);
             sep.addElement(dipole);
 
             // Выходной край
             if (std::abs(exitRad) > 1e-6) {
                 SeparatorElement edge(ElementType::DipoleEdge);
                 edge.setName(QString("DipoleExitEdge%1").arg(dipoleCount));
-                edge.setParameters(-exitRad, radius, rexit);
+                edge.setParameters(-exitRad, R_ref, rexit);
                 sep.addElement(edge);
             }
             dipoleCount++;
