@@ -156,6 +156,11 @@ MainWindow::MainWindow(QWidget *parent) :
     fileMenu->addSeparator();
     fileMenu->addAction(exitAction);
 
+    connect(m_stripperCheckBox, &QCheckBox::toggled, this, [this](bool on){ carbon_switch = on; });
+    connect(m_stripperThicknessEdit, &QLineEdit::editingFinished, this, [this](){
+        m_stripperThickness = m_stripperThicknessEdit->text().toDouble();
+    });
+
     connect(saveAction, &QAction::triggered, this, &MainWindow::saveToFile);
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
     connect(loadBeamAction, &QAction::triggered, this, &MainWindow::loadBeamFromFile);
@@ -560,6 +565,9 @@ void MainWindow::onGenerateClicked()
     qValues.clear();
 
     // Создаём объекты генераторов
+    delete compaundGen; delete neutronEvaporation; delete scattering;
+    delete chargecalc;  delete carbonenergyloss;
+
     compaundGen = new CompaundGen(mean, variance, a, b);
     neutronEvaporation = new NeutronEvaporation(Z, A, U, E);
     scattering = new Scattering(E, Z, A, Zt, At, density, mt, l, targetflag, tiltBeta, this);
@@ -615,20 +623,15 @@ void MainWindow::onGenerateClicked()
 
     spAsked = false;
 
-    // --- Подготовка сепаратора ---
-    if (m_useOptics) {
-        double refEnergy_MeV = m_meanInput->text().toDouble() / 1000.0;
-        double refMass = m_AInput->text().toDouble();
-        int refCharge = m_ZInput->text().toInt();
-        double refMassAmu = (refCharge * 1.007276) + ((refMass - refCharge) * 1.008665) - 0.008 * refMass + (refCharge * 0.00054858);
-        m_separator = m_separatorConfig.buildSeparator(refEnergy_MeV, refMassAmu, refCharge);
-        updateSeparatorScheme();
-    }
+    if (m_useOptics) rebuildTransport();
 
     m_passedCount = 0;
     m_allXZ.clear();
     m_allYZ.clear();
     m_separator.resetLossStats();
+
+    struct CmpStats { int both = 0, onlyM = 0, onlyF = 0, none = 0;
+                      double sdx = 0, sdy = 0, sdxp = 0, sdyp = 0; } cmp;
 
     for (int i = 0; i < N; ++i) {
         QCoreApplication::processEvents();
@@ -641,14 +644,31 @@ void MainWindow::onGenerateClicked()
 
         if (m_useOptics && Q1 > 0) {
             Particle p;
-            p.Z = m_ZInput->text().toInt();
-            p.A = m_AInput->text().toInt();
+            p.Z = qRound(Z); p.A = qRound(A);
             p.x = x; p.y = y; p.xp = x_prime; p.yp = y_prime;
             p.energy = E; p.mass = Mass; p.charge = Q1; p.alive = true;
             p.clearTrack();
             p.addTrackPoint(0.0, x, y, x_prime, y_prime, E, Mass, Q1, "После мишени");
 
-            m_separator.transport(p);
+            const int mode = m_transportCombo->currentIndex();
+            if (mode == 0) {
+                m_separator.transport(p);
+            } else if (mode == 1) {
+                transportField(p);
+            } else {                                   // сравнение: считаем двумя способами
+                Particle pm = p;
+                m_separator.transport(pm);             // матрица (учитывает потери)
+                transportField(p, false);              // RK4 (потери не дублируем)
+                if (pm.alive && p.alive) {
+                    ++cmp.both;
+                    cmp.sdx  += (p.x  - pm.x)  * (p.x  - pm.x);
+                    cmp.sdy  += (p.y  - pm.y)  * (p.y  - pm.y);
+                    cmp.sdxp += (p.xp - pm.xp) * (p.xp - pm.xp);
+                    cmp.sdyp += (p.yp - pm.yp) * (p.yp - pm.yp);
+                } else if (pm.alive) ++cmp.onlyM;
+                else if (p.alive)    ++cmp.onlyF;
+                else                 ++cmp.none;
+            }
 
             // Всегда добавляем распределения по точкам (для фазовых пространств)
             addTrackToDistributions(p);
@@ -673,7 +693,21 @@ void MainWindow::onGenerateClicked()
         progress.setValue(i + 1);
         QApplication::processEvents();
     }
-
+    if (m_useOptics && m_transportCombo->currentIndex() == 2 && N > 0) {
+        const int n = qMax(1, cmp.both);
+        QString s = QString("Прошли в обоих: %1\nТолько матрица: %2\nТолько RK4: %3\nПотеряны в обоих: %4\n"
+                            "Трансмиссия: матрица %5%, RK4 %6%\n"
+                            "RMS разности (прошедшие в обоих): x=%7 мм, y=%8 мм, x'=%9 мрад, y'=%10 мрад")
+            .arg(cmp.both).arg(cmp.onlyM).arg(cmp.onlyF).arg(cmp.none)
+            .arg(100.0 * (cmp.both + cmp.onlyM) / N, 0, 'f', 2)
+            .arg(100.0 * (cmp.both + cmp.onlyF) / N, 0, 'f', 2)
+            .arg(std::sqrt(cmp.sdx / n) * 1e3, 0, 'g', 4)
+            .arg(std::sqrt(cmp.sdy / n) * 1e3, 0, 'g', 4)
+            .arg(std::sqrt(cmp.sdxp / n) * 1e3, 0, 'g', 4)
+            .arg(std::sqrt(cmp.sdyp / n) * 1e3, 0, 'g', 4);
+        qDebug().noquote() << s;
+        QMessageBox::information(this, "Сравнение алгоритмов", s);
+    }
     // ======================== ПОСЛЕ ЦИКЛА ========================
     m_pointCombo->clear();
 
@@ -794,6 +828,7 @@ void MainWindow::Modeling()
         ///
         neutronEvaporation->Evaporate_particles(Z, A, U, E, numProtons, numNeutrons, numAlphas, x, y,
                                                 theta, phi, x_prime, y_prime, brk);//, spAsked, snAsked);
+        Mass = (Z * 1.007276) + ((A - Z) * 1.008665) - 0.008 * A + (Z * 0.00054858);
         //debugShow(x,y,x_prime, y_prime,Q,BR);
 
 
@@ -1762,12 +1797,7 @@ void MainWindow::loadSeparatorConfig()
 
 void MainWindow::updateSeparator()
 {
-    double refEnergy_MeV = m_meanInput->text().toDouble() / 1000.0;
-    double refMass = m_AInput->text().toDouble();
-    int refCharge = m_ZInput->text().toInt();
-    double refMassAmu = (refCharge * 1.007276) + ((refMass - refCharge) * 1.008665) - 0.008 * refMass + (refCharge * 0.00054858);
-    m_separator = m_separatorConfig.buildSeparator(refEnergy_MeV, refMassAmu, refCharge);
-    updateSeparatorScheme();
+    rebuildTransport();
 }
 
 void MainWindow::updateSeparatorScheme()
@@ -1893,14 +1923,14 @@ void MainWindow::applyConfigFromEditor()
     QString text = m_configEditor->toPlainText();
     if (m_separatorConfig.parseFromString(text)) {
         QMessageBox::information(this, "Успех", "Конфигурация сепаратора успешно применена");
-        if (m_useOptics) {
-            double refEnergy_MeV = m_meanInput->text().toDouble() / 1000.0;
-            double refMass = m_AInput->text().toDouble();
-            int refCharge = m_ZInput->text().toInt();
-            double refMassAmu = (refCharge * 1.007276) + ((refMass - refCharge) * 1.008665) - 0.008 * refMass + (refCharge * 0.00054858);
-            m_separator = m_separatorConfig.buildSeparator(refEnergy_MeV, refMassAmu, refCharge);
-            updateSeparatorScheme();
-        }
+       if (m_useOptics) rebuildTransport();
+//            double refEnergy_MeV = m_meanInput->text().toDouble() / 1000.0;
+//            double refMass = m_AInput->text().toDouble();
+//            int refCharge = this->refCharge();
+//            double refMassAmu = (refCharge * 1.007276) + ((refMass - refCharge) * 1.008665) - 0.008 * refMass + (refCharge * 0.00054858);
+//            m_separator = m_separatorConfig.buildSeparator(refEnergy_MeV, refMassAmu, refCharge);
+//            updateSeparatorScheme();
+//        }
     } else {
         QMessageBox::warning(this, "Ошибка", "Не удалось разобрать конфигурацию. Проверьте синтаксис.");
     }
@@ -2056,16 +2086,12 @@ void MainWindow::loadBeamFromFile()
 
     // --- 5. Перестроение сепаратора (если оптика включена) ---
     if (m_useOptics && m_useOpticsCheck && m_useOpticsCheck->isChecked()) {
-        double refEnergy_MeV = m_meanInput->text().toDouble() / 1000.0;
-        double refMass = uiA;
-        int refCharge = uiZ;
-        double refMassAmu = (refCharge * 1.007276) + ((refMass - refCharge) * 1.008665) - 0.008 * refMass + (refCharge * 0.00054858);
-        m_separator = m_separatorConfig.buildSeparator(refEnergy_MeV, refMassAmu, refCharge);
-        updateSeparatorScheme();
+        rebuildTransport();
         m_separator.resetLossStats();
     }
 
     // --- 6. Цикл по всем частицам из файла ---
+    N = allParts.size();
     for (int i = 0; i < allParts.size(); ++i) {
         if (progress.wasCanceled()) break;
         progress.setValue(i);
@@ -2158,7 +2184,9 @@ void MainWindow::loadBeamFromFile()
             p.clearTrack();
             p.addTrackPoint(0.0, x, y, xp, yp, E_MeV, partA, Q, "После мишени");
 
-            m_separator.transport(p);
+            if (m_transportCombo->currentIndex() == 0) m_separator.transport(p);
+            else transportField(p);
+
             addTrackToDistributions(p); // <--- Убедитесь, что эта функция обновлена (см. пункт 2 ниже)
 
             if (p.alive) {
@@ -2184,6 +2212,20 @@ void MainWindow::loadBeamFromFile()
             m_isotopeStats[{z, partA}]++;
         }
     }
+    if (!m_loaded_E.isEmpty()) {
+           double sE = 0, sQ = 0, sEq = 0; int nq = 0;
+           for (int i = 0; i < m_loaded_E.size(); ++i) {
+               sE += m_loaded_E[i]; sQ += m_loaded_Q[i];
+               if (m_loaded_Q[i] > 0) { sEq += m_loaded_E[i] / m_loaded_Q[i]; ++nq; }
+           }
+           const int n = m_loaded_E.size();
+           qDebug() << "Пучок из файла: <E> =" << sE / n << "МэВ, <Q> =" << sQ / n
+                    << ", <E/q> =" << (nq ? sEq / nq : 0.0) << "МэВ/заряд";
+           qDebug() << "Опорная: E =" << m_meanInput->text().toDouble() / 1000.0
+                    << "МэВ, Q =" << refCharge()
+                    << ", m =" << referenceMassAmu() << "а.е.м.";
+           qDebug() << "Для дефлектора нужно E/q = R*U/(2*gap) (кэВ), для вашего конфига ~7.86 МэВ/заряд";
+       }
 
     progress.setValue(allParts.size());
 
@@ -2405,12 +2447,7 @@ void MainWindow::applyOptimizedParams(const QVector<double>& values)
                                       values[i]);
     }
 
-    double refEnergy_MeV = m_meanInput->text().toDouble() / 1000.0;
-    double refMass = m_AInput->text().toDouble();
-    int refCharge = m_ZInput->text().toInt();
-    double refMassAmu = (refCharge * 1.007276) + ((refMass - refCharge) * 1.008665) - 0.008 * refMass + (refCharge * 0.00054858);
-    m_separator = m_separatorConfig.buildSeparator(refEnergy_MeV, refMassAmu, refCharge);
-    updateSeparatorScheme();
+    rebuildTransport();
 
     QString text = m_configEditor->toPlainText();
     text += "\n# Оптимальные параметры:\n";
@@ -2489,6 +2526,69 @@ void MainWindow::updateIsotopeStatsUI()
 
     m_isotopeStatsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
+
+
+// масса опорной частицы = остаток после испарения
+double MainWindow::referenceMassAmu() const
+{
+    const double nP = m_protInput->text().toDouble();
+    const double nN = m_neutrInput->text().toDouble();
+    const double nA = m_alphaInput->text().toDouble();
+    const double Zr = m_ZInput->text().toDouble() - nP - 2.0 * nA;
+    const double Ar = m_AInput->text().toDouble() - nN - nP - 4.0 * nA;
+    return Zr * 1.007276 + (Ar - Zr) * 1.008665 - 0.008 * Ar + Zr * 0.00054858;
+}
+
+// строит ОБА транспорта из одних и тех же опорных параметров
+void MainWindow::rebuildTransport()
+{
+    const double refE = m_meanInput->text().toDouble() / 1000.0;   // МэВ
+    const double refM = referenceMassAmu();
+    const int    refQ = refCharge();
+    m_separator = m_separatorConfig.buildSeparator(refE, refM, refQ);
+    m_fieldLine = buildFieldLine(m_separatorConfig, refE, refM, refQ, true);
+    updateSeparatorScheme();
+}
+
+// транспорт полевым движком; результат кладётся в Particle так же, как у матричного
+void MainWindow::transportField(Particle& p, bool recordLoss)
+{
+    ft::IntegratorOpts opts;
+    opts.h = qMax(0.0005, m_rkStepEdit->text().toDouble() / 1000.0);   // мм -> м
+    opts.recordEvery = 10;
+
+    const ft::TransportResult r = m_fieldLine.engine.transport(
+        p.x, p.y, p.xp, p.yp, p.energy, p.mass, p.charge, opts);
+
+    const auto& els = m_fieldLine.engine.elements();
+    size_t k = 0;
+    double zEnd = 0.0;
+    for (size_t i = 0; i < r.exits.size(); ++i) {
+        zEnd += els[i]->designLength();
+        // промежуточные точки (имя с '_' не попадает в распределения по точкам)
+        while (k < r.track.size() && r.track[k].z < zEnd - 1e-9) {
+            const auto& t = r.track[k++];
+            p.addTrackPoint(t.z, t.x, t.y, 0, 0, p.energy, p.mass, p.charge, "fld_mid");
+        }
+        while (k < r.track.size() && r.track[k].z < zEnd + 1e-9) ++k;   // дубль конца
+        const auto& e = r.exits[i];
+        p.addTrackPoint(zEnd, e.x, e.y, e.xp, e.yp, e.eKin, p.mass, p.charge,
+                        m_fieldLine.names.value(int(i)));
+    }
+    p.alive = r.alive;
+    if (!r.alive) {
+        while (k < r.track.size()) {
+            const auto& t = r.track[k++];
+            p.addTrackPoint(t.z, t.x, t.y, 0, 0, p.energy, p.mass, p.charge, "fld_mid");
+        }
+        if (recordLoss)
+            m_separator.registerLoss(m_fieldLine.names.value(r.loss.elementIndex),
+                                     r.loss.elementIndex);
+    } else {
+        p.x = r.x; p.y = r.y; p.xp = r.xp; p.yp = r.yp;
+        if (!r.exits.empty()) p.energy = r.exits.back().eKin;
+    }
+}
 void MainWindow::setupUI()
 {
     // ------------------- Главное окно -------------------
@@ -2546,11 +2646,17 @@ void MainWindow::setupUI()
     beamGrid->addWidget(new QLabel("Дисперсия энергии:"), row, 0);
     beamGrid->addWidget(m_varianceInput, row, 1);
     row++;
+    m_refQInput = new QLineEdit("20");
+    m_refQInput->setMaximumWidth(120);
+    beamGrid->addWidget(new QLabel("Опорный заряд Q сепаратора:"), row, 0);
+    beamGrid->addWidget(m_refQInput, row, 1);
+    row++;
     beamGrid->addWidget(new QLabel("Энергия возбуждения U, МэВ:"), row, 0);
     beamGrid->addWidget(m_UInput, row, 1);
     row++;
     beamGrid->addWidget(new QLabel("Число частиц N:"), row, 0);
     beamGrid->addWidget(m_NInput, row, 1);
+    row++;
     beamGrid->addWidget(new QLabel("Z ядра:"), row, 0);
     beamGrid->addWidget(m_ZInput, row, 1);
     row++;
@@ -2683,6 +2789,21 @@ void MainWindow::setupUI()
 
     m_multiProductCheck = new QCheckBox("Режим мульти-продуктов", tabOptics);
     opticsMainLayout->insertWidget(opticsMainLayout->indexOf(m_useOpticsCheck), m_multiProductCheck);
+
+
+
+    QHBoxLayout *trLayout = new QHBoxLayout();
+    trLayout->addWidget(new QLabel("Алгоритм транспорта:", tabOptics));
+    m_transportCombo = new QComboBox(tabOptics);
+    m_transportCombo->addItems({"Матричный (быстро)", "Полевой RK4 (точно)",
+                                "Сравнение: матрица и RK4"});
+    trLayout->addWidget(m_transportCombo);
+    trLayout->addWidget(new QLabel("Шаг RK4, мм:", tabOptics));
+    m_rkStepEdit = new QLineEdit("5", tabOptics);
+    m_rkStepEdit->setMaximumWidth(60);
+    trLayout->addWidget(m_rkStepEdit);
+    trLayout->addStretch();
+    opticsMainLayout->addLayout(trLayout);
 
     QHBoxLayout *opticsActionLayout = new QHBoxLayout();
     m_optimizeBtn = new QPushButton("Фитирование", tabOptics);

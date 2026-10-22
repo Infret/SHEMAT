@@ -58,6 +58,7 @@
 #include "separator/separatorconfig.h"
 #include "separator/separatorview.h"
 #include "separator/trajectorywindow.h"
+#include "separator/fieldadapter.h"
 
 namespace Ui {
 class MainWindow;
@@ -117,7 +118,7 @@ private:
     double lr, Q, Q1, x_prime, y_prime, E, x, y, theta, phi, BR;
     double mean, variance, U, Z, A, Mass, density, mt, Zt, At, l, a, b;
     int N, numNeutrons, numProtons, numAlphas, brk;
-    bool spAsked, snAsked, carbon_switch, targetflag;
+    bool spAsked = false, snAsked = false, carbon_switch = false, targetflag = false;
     double tiltBeta = 0;
     bool l_is_along_beam = false;
 
@@ -136,12 +137,12 @@ private:
     QBarSeries *m_barSeries;
 
     // Модели
-    CompaundGen *compaundGen;
-    NeutronEvaporation *neutronEvaporation;
-    Scattering *scattering;
-    ChargeCalc *chargecalc;
-    angulardistributionmodel *m_angularDistributionModel;
-    CarbonEnergyLoss *carbonenergyloss;
+    CompaundGen *compaundGen = nullptr;
+    NeutronEvaporation *neutronEvaporation = nullptr;
+    Scattering *scattering = nullptr;
+    ChargeCalc *chargecalc = nullptr;
+    CarbonEnergyLoss *carbonenergyloss = nullptr;
+    angulardistributionmodel * m_angularDistributionModel = nullptr;
 
     // Таблица элементов
     PeriodicTable* m_periodicTable;
@@ -262,6 +263,19 @@ private:
 
     void updateIsotopeStatsUI();
     void updateFilterCombos();
+
+    QLineEdit *m_refQInput;
+    int refCharge() const { return qMax(1, m_refQInput->text().toInt()); }
+
+    // --- выбор алгоритма транспорта ---
+    FieldLine m_fieldLine;
+    QComboBox *m_transportCombo = nullptr;   // 0 матрица, 1 RK4, 2 сравнение
+    QLineEdit *m_rkStepEdit = nullptr;
+    void rebuildTransport();
+    void transportField(Particle& p, bool recordLoss = true);
+    double referenceMassAmu() const;
+
+
 
 
 

@@ -97,10 +97,10 @@ void Scattering::ScatteringCalc(double& E, double& Z, double& A, double& Zt, dou
     theta = 0.0;
     phi = 0.0;
 
-    // ---- Отладочный вывод ----
-    qDebug() << "Scattering: theta0=" << theta0 << "phi0=" << phi0
-             << "ls=" << ls << "effectiveLength=" << effectiveLength
-             << "useRotation=" << useRotation;
+//    // ---- Отладочный вывод ----
+//    qDebug() << "Scattering: theta0=" << theta0 << "phi0=" << phi0
+//             << "ls=" << ls << "effectiveLength=" << effectiveLength
+//             << "useRotation=" << useRotation;
 
     //qDebug()<<"ls :"<<ls;
 

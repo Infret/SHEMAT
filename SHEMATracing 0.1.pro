@@ -21,6 +21,9 @@ SOURCES += \
     optimizationdialog.cpp \
     periodictable.cpp \
     scattering.cpp \
+    separator/fieldadapter.cpp \
+    separator/fieldelement.cpp \
+    separator/fieldengine.cpp \
     separator/separatorconfig.cpp \
     separator/separatorview.cpp \
     separator/trajectoryscene.cpp \
@@ -48,11 +51,17 @@ HEADERS += \
     optimizationdialog.h \
     periodictable.h \
     scattering.h \
+    separator/fieldadapter.h \
+    separator/fieldcore.h \
+    separator/fieldelement.h \
+    separator/fieldengine.h \
+    separator/integrator.h \
     separator/separatorconfig.h \
     separator/separatorview.h \
     separator/trajectoryscene.h \
     separator/trajectoryview.h \
     separator/trajectorywindow.h \
+    separator/vec3.h \
     stripperdialog.h \
     stylehelper.h \
     separator/parser.h \
