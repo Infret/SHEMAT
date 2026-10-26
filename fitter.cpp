@@ -303,26 +303,14 @@ void Fitter::updateSeparator(const QVector<double>& values)
         return;
     }
 
-    if (m_verbose) {
-        logParams("Updating separator with", values);
-    }
-
     for (int i = 0; i < values.size(); ++i) {
         m_config.updateParam(m_variables[i].commandIndex,
                              m_variables[i].paramIndex,
                              values[i]);
     }
 
-    if (m_beam.isEmpty()) {
-        emit error("Нет пучка для перестроения сепаратора.");
-        return;
-    }
-    const Particle& ref = m_beam[0];
-    m_separator = m_config.buildSeparator(ref.energy, ref.mass, ref.charge);
-
-    if (m_verbose) {
-        qDebug() << "  New separator has" << m_separator.elementsCount() << "elements";
-    }
+    // Просто пересобираем сепаратор, физика частиц теперь не нужна для построения геометрии
+    m_separator = m_config.buildSeparator();
 }
 
 double Fitter::evaluateTargetFunction()

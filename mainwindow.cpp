@@ -288,54 +288,69 @@ MainWindow::MainWindow(QWidget *parent) :
         textEdit->setStyleSheet("font-family: Courier New;");
         textEdit->setStyleSheet("QTextEdit { background-color: #f5f5f5; color: #000000; }");
         textEdit->setPlainText(
-            "Руководство пользователя программы SHEMAT\n"
-            "================================================\n\n"
-            "1. Основные вкладки\n"
-            "   - Генерация: настройка параметров пучка (энергия, размеры, число частиц,\n"
-            "     испаряемые частицы, Z, A компаунд-ядра).\n"
-            "   - Мишень: управление слоями мишени (элемент, массовое число, стехиометрия,\n"
-            "     толщина, плотность). При включенном основном слое генерация частицы происходит в случайной точке мишени.\n"
-            "   - Ионная оптика: редактирование конфигурации сепаратора. Доступные команды:\n"
-            "     DRIFT длина_м [апертура_м] — дрейф (апертура по умолч. 0.1).\n"
-            "     QUAD длина_м поле_Тл апертура_м [fringe] — квадруполь (fringe по умолч. 0.2).\n"
-            "     DEFLECTOR радиус_м угол_град зазор_м напряжение_кВ — эл.стат. дефлектор.\n"
-            "     DIPOLE радиус_м угол_град зазор_м угол_входа_град угол_выхода_град renter rexit\n"
-            "            — магнитный диполь с краевыми полями.\n"
-            "   - Графики: выбор точки сепаратора, построение фазовых пространств и гистограмм.\n"
-            "   - Статистика: таблица потерь по элементам.\n\n"
-            "2. Управление пучком\n"
-            "   - Кнопка 'Сгенерировать' — запуск моделирования с параметрами из вкладки 'Генерация'.\n"
-            "   - Меню 'Файл' → 'Загрузить пучок из файла...' — загрузка данных из текстового файла\n"
-            "     формата: x_мм y_мм x'_рад y'_рад E_МэВ Q.\n"
-            "   - Меню 'Настройки' → 'Углеродная фольга' — включение стриппера с заданием толщины.\n\n"
-            "3. Ионная оптика\n"
-            "   - Редактор конфигурации: введите команды, затем нажмите 'Применить конфигурацию'.\n"
-            "   - Кнопки 'Загрузить из файла' и 'Сохранить в файл' для работы с .txt.\n"
-            "   - Чекбокс 'Использовать ионную оптику' включает/отключает транспорт.\n"
-            "   - Кнопка 'Показать траектории' — отображение траекторий частиц в отдельном окне.\n"
-            "   - Кнопка 'Фитирование' — автоматический подбор параметров.\n\n"
-            "4. Оптимизация\n"
-            "   - Выберите параметры для оптимизации в диалоге 'Мастер оптимизации'.\n"
-            "   - Установите целевую функцию (RMS X, RMS Y, RMS X+Y, трансмиссия).\n"
-            "   - Задайте точность и максимальное число итераций.\n\n"
-            "5. Визуализация и анализ\n"
-            "   - Траектории: окно с проекциями XZ и YZ, масштабирование колёсиком, панорамирование.\n"
-            "   - Фазовые портреты: выберите параметры для осей и точку сепаратора.\n"
-            "   - Гистограммы: распределения выбранного параметра.\n"
-            "   - Таблица статистики показывает потери на каждом элементе.\n\n"
-            "Пример конфигурации сепаратора (Q-Q-Q-E10-D37):\n"
-            "  DRIFT 0.6 0.1\n"
-            "  QUAD 0.375 0.5961 0.095 0.2\n"
-            "  DRIFT 0.2 0.1\n"
-            "  QUAD 0.375 -0.6221 0.095 0.2\n"
-            "  DRIFT 0.2 0.1\n"
-            "  QUAD 0.375 0.3891 0.095 0.2\n"
-            "  DRIFT 1.0 0.1\n"
-            "  DEFLECTOR 11.0 10.0 0.07 0.0\n"
-            "  DRIFT 0.8 0.1\n"
-            "  DIPOLE 1.055 37.0 0.057 46.0 -43.0 0.5 -0.5\n"
-            "  DRIFT 1.9 0.1\n"
-        );
+             "Руководство пользователя программы SHEMAT\n"
+             "================================================\n\n"
+             "1. Основные вкладки\n"
+             "   - Генерация: настройка параметров пучка (энергия, размеры, число частиц,\n"
+             "     испаряемые частицы, Z, A компаунд-ядра).\n"
+             "   - Мишень: управление слоями мишени (элемент, массовое число, стехиометрия,\n"
+             "     толщина, плотность). При включенном основном слое генерация частицы происходит в случайной точке мишени.\n"
+             "   - Ионная оптика: редактирование конфигурации сепаратора. Доступные команды:\n"
+             "     DRIFT длина_м [апертура_м] — дрейф (апертура по умолч. 0.1).\n"
+             "     QUAD длина_м поле_Тл апертура_м [fringe] — квадруполь (fringe по умолч. 0.2).\n"
+             "     DEFLECTOR U_кВ R_м угол_град зазор_м x_min x_max — электростатический дефлектор.\n"
+             "     DIPOLE B_Тл R_м угол_град зазор_м e1_град e2_град x_min x_max\n"
+             "            — магнитный диполь с краевыми полями.\n"
+             "            (Отрицательные B или U меняют направление изгиба пучка).\n"
+             "   - Графики: выбор точки сепаратора, построение фазовых пространств и гистограмм.\n"
+             "   - Статистика: таблица потерь по элементам.\n\n"
+             "2. Управление пучком\n"
+             "   - Кнопка 'Сгенерировать' — запуск моделирования с параметрами из вкладки 'Генерация'.\n"
+             "   - Меню 'Файл' → 'Загрузить пучок из файла...' — загрузка данных из текстового файла\n"
+             "     формата: x_мм y_мм x'_рад y'_рад E_МэВ Q.\n"
+             "   - Меню 'Настройки' → 'Углеродная фольга' — включение стриппера с заданием толщины.\n\n"
+             "3. Ионная оптика\n"
+             "   - Внимание! Опорная энергия и заряд из вкладки 'Генерация' НЕ ВЛИЯЮТ на транспорт.\n"
+             "     Траектории рассчитываются строго по полям (B, U) и индивидуальным параметрам каждой частицы.\n"
+             "   - Редактор конфигурации: введите команды, затем нажмите 'Применить конфигурацию'.\n"
+             "   - Кнопки 'Загрузить из файла' и 'Сохранить в файл' для работы с .txt.\n"
+             "   - Чекбокс 'Использовать ионную оптику' включает/отключает транспорт.\n"
+             "   - Кнопка 'Показать траектории' — отображение траекторий частиц в отдельном окне.\n"
+             "   - Кнопка 'Фитирование' — автоматический подбор параметров.\n\n"
+             "4. Оптимизация\n"
+             "   - Выберите параметры для оптимизации в диалоге 'Мастер оптимизации'.\n"
+             "   - Установите целевую функцию (RMS X, RMS Y, RMS X+Y, трансмиссия).\n"
+             "   - Задайте точность и максимальное число итераций.\n\n"
+             "5. Визуализация и анализ\n"
+             "   - Траектории: окно с проекциями XZ и YZ, масштабирование колёсиком, панорамирование.\n"
+             "   - Фазовые портреты: выберите параметры для осей и точку сепаратора.\n"
+             "   - Гистограммы: распределения выбранного параметра.\n"
+             "   - Таблица статистики показывает потери на каждом элементе.\n\n"
+             "Пример конфигурации сепаратора SHELS (на основе D-22):\n"
+             "  DRIFT 0.6 0.1\n"
+             "  QUAD 0.6 0.32376 0.142\n"
+             "  DRIFT 0.232 0.142\n"
+             "  QUAD 0.375 -0.2808 0.142\n"
+             "  DRIFT 0.231 0.142\n"
+             "  QUAD 0.375 0.11928 0.142\n"
+             "  DRIFT 0.5895 0.142\n"
+             "  DEFLECTOR -142.6 4.709 8.0 0.18 -0.1 0.1\n"
+             "  DRIFT 0.414 0.1\n"
+             "  DIPOLE -0.4535 1.57 21.8 0.133 14.0 8.0 -0.19 0.1\n"
+             "  DIPOLE 0.4535 1.57 21.8 0.133 14.0 8.0 0 0.2\n"
+             "  DEFLECTOR 142.6 4.709 8.0 0.18 -0.1 0.1\n"
+             "  DRIFT 0.414 0.1\n"
+             "  DRIFT 0.5115 0.095\n"
+             "  QUAD 0.38 0.0798 0.095\n"
+             "  DRIFT 0.2 0.095\n"
+             "  QUAD 0.38 -0.1824 0.095\n"
+             "  DRIFT 0.2 0.095\n"
+             "  QUAD 0.38 0.116375 0.095\n"
+             "  DRIFT 2.036 0.07\n"
+             "  DIPOLE -0.159 4.618 7.3 0.15 -0.08 0.08 -0.08 0.08\n"
+             "  DRIFT 1.8 0.1\n"
+         );
+
         dlgLayout->addWidget(textEdit);
         dlg.exec();
     });
@@ -2028,7 +2043,7 @@ void MainWindow::loadBeamFromFile()
     m_allXZ.clear(); m_allYZ.clear(); m_distributions.clear();
     xValues.clear(); yValues.clear(); xPrimeValues.clear(); yPrimeValues.clear();
     energyValues.clear(); qValues.clear();
-    m_isotopeStats.clear(); // <--- ОЧИСТКА СТАТИСТИКИ ИЗОТОПОВ
+    m_isotopeStats.clear();
 
     if (m_trajWindow) m_trajWindow->clearTrajectories();
 
@@ -2045,22 +2060,28 @@ void MainWindow::loadBeamFromFile()
     // --- 3. Чтение файла ---
     QTextStream in(&file);
     QVector<QStringList> allParts;
+    bool isMultiProduct = (m_multiProductCheck && m_multiProductCheck->isChecked());
+    int requiredCols = isMultiProduct ? 7 : 6; // Строгое требование колонок
+
     while (!in.atEnd()) {
         QString line = in.readLine().trimmed();
-        if (line.isEmpty() || line.startsWith('#') || line.startsWith(';')) continue; // Игнорируем комментарии
+        // Пропускаем пустые строки и комментарии
+        if (line.isEmpty() || line.startsWith('#') || line.startsWith(';')) continue;
+
         QStringList parts = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
         if (parts.isEmpty()) continue;
 
-        // <--- ПРОВЕРКА КОЛИЧЕСТВА КОЛОНОК В ЗАВИСИМОСТИ ОТ РЕЖИМА
-        int minCols = (m_multiProductCheck && m_multiProductCheck->isChecked()) ? 7 : 6;
-        if (parts.size() >= minCols) {
+        // Если колонок достаточно, сохраняем их
+        if (parts.size() >= requiredCols) {
             allParts.append(parts);
+        } else {
+            qDebug() << "Пропущена строка (мало колонок):" << line;
         }
     }
     file.close();
 
     if (allParts.isEmpty()) {
-        QMessageBox::warning(this, "Ошибка", "Файл не содержит корректных данных.");
+        QMessageBox::warning(this, "Ошибка", "Файл не содержит корректных данных (нужно минимум " + QString::number(requiredCols) + " колонок).");
         return;
     }
 
@@ -2089,7 +2110,7 @@ void MainWindow::loadBeamFromFile()
         rebuildTransport();
         m_separator.resetLossStats();
     }
-
+     N = allParts.size();
     // --- 6. Цикл по всем частицам из файла ---
     N = allParts.size();
     for (int i = 0; i < allParts.size(); ++i) {
@@ -2100,12 +2121,12 @@ void MainWindow::loadBeamFromFile()
         const QStringList& parts = allParts[i];
         double x_mm, y_mm, xp, yp, E_MeV;
         int Q = 1;
-        int z = uiZ; // Значение по умолчанию из UI
-        int a = uiA; // Значение по умолчанию из UI
+        int z = uiZ;
+        int a = uiA;
 
-        // <--- РАЗДЕЛЕНИЕ ЛОГИКИ ЧТЕНИЯ ПО РЕЖИМАМ
-        if (m_multiProductCheck && m_multiProductCheck->isChecked()) {
-            // Формат: Z, A, x_мм, y_мм, xp, yp, E_МэВ
+        // --- ЛОГИКА ЧТЕНИЯ СТРОГО ПО РЕЖИМУ ---
+        if (isMultiProduct) {
+            // Формат: Z, A, x_мм, y_мм, xp, yp, E_МэВ (7 колонок)
             z = parts[0].toInt();
             a = parts[1].toInt();
             x_mm = parts[2].toDouble();
@@ -2114,7 +2135,8 @@ void MainWindow::loadBeamFromFile()
             yp = parts[5].toDouble();
             E_MeV = parts[6].toDouble();
         } else {
-            // Старый формат: x_мм, y_мм, xp, yp, E_МэВ, Q
+            // Обычный формат: x_мм, y_мм, xp, yp, E_МэВ, Q (6 колонок).
+            // Если есть 7-я колонка (BR), мы её просто ИГНОРИРУЕМ.
             x_mm = parts[0].toDouble();
             y_mm = parts[1].toDouble();
             xp = parts[2].toDouble();
@@ -2123,11 +2145,15 @@ void MainWindow::loadBeamFromFile()
             Q = qRound(parts[5].toDouble());
         }
 
+        // Для отладки (в консоль выведется, что именно прочиталось)
+        if (i == 0) {
+            qDebug() << "Первая частица из файла: E=" << E_MeV << "Q=" << Q << "Z=" << z << "A=" << a;
+        }
+
         double x = x_mm / 1000.0;
         double y = y_mm / 1000.0;
         double E_keV = E_MeV * 1000.0;
 
-        // Сохраняем исходные данные (до обработки)
         m_loaded_x.append(x);
         m_loaded_y.append(y);
         m_loaded_xp.append(xp);
@@ -2176,10 +2202,10 @@ void MainWindow::loadBeamFromFile()
             Particle p;
             p.x = x; p.y = y; p.xp = xp; p.yp = yp;
             p.energy = E_MeV;
-            p.mass = partA;
+            p.mass = partA; // Важно: для загруженного пучка масса берется из файла (если мультипродукт) или из UI (если обычный)
             p.charge = Q;
-            p.Z = z;      // <--- КЛЮЧЕВОЕ ДОБАВЛЕНИЕ: сохраняем Z
-            p.A = partA;  // <--- КЛЮЧЕВОЕ ДОБАВЛЕНИЕ: сохраняем A
+            p.Z = z;
+            p.A = partA;
             p.alive = true;
             p.clearTrack();
             p.addTrackPoint(0.0, x, y, xp, yp, E_MeV, partA, Q, "После мишени");
@@ -2187,7 +2213,7 @@ void MainWindow::loadBeamFromFile()
             if (m_transportCombo->currentIndex() == 0) m_separator.transport(p);
             else transportField(p);
 
-            addTrackToDistributions(p); // <--- Убедитесь, что эта функция обновлена (см. пункт 2 ниже)
+            addTrackToDistributions(p);
 
             if (p.alive) {
                 QVector<QPointF> xz, yz;
@@ -2198,20 +2224,20 @@ void MainWindow::loadBeamFromFile()
                 m_allXZ.append(xz);
                 m_allYZ.append(yz);
                 m_passedCount++;
-
-                // <--- ПОДСЧЁТ СТАТИСТИКИ ПО ИЗОТОПАМ
                 m_isotopeStats[{p.Z, p.A}]++;
             }
         } else if (m_useOptics && m_useOpticsCheck && m_useOpticsCheck->isChecked() && Q <= 0) {
-            continue; // частицы с Q <= 0 не транспортируются
+            continue;
         } else {
-            // Оптика выключена — просто считаем все частицы прошедшими
             m_passedCount++;
             xValues.append(x); yValues.append(y); xPrimeValues.append(xp); yPrimeValues.append(yp);
             energyValues.append(E_MeV); qValues.append(Q);
             m_isotopeStats[{z, partA}]++;
         }
     }
+
+    progress.setValue(allParts.size());
+
     if (!m_loaded_E.isEmpty()) {
            double sE = 0, sQ = 0, sEq = 0; int nq = 0;
            for (int i = 0; i < m_loaded_E.size(); ++i) {
@@ -2221,13 +2247,7 @@ void MainWindow::loadBeamFromFile()
            const int n = m_loaded_E.size();
            qDebug() << "Пучок из файла: <E> =" << sE / n << "МэВ, <Q> =" << sQ / n
                     << ", <E/q> =" << (nq ? sEq / nq : 0.0) << "МэВ/заряд";
-           qDebug() << "Опорная: E =" << m_meanInput->text().toDouble() / 1000.0
-                    << "МэВ, Q =" << refCharge()
-                    << ", m =" << referenceMassAmu() << "а.е.м.";
-           qDebug() << "Для дефлектора нужно E/q = R*U/(2*gap) (кэВ), для вашего конфига ~7.86 МэВ/заряд";
        }
-
-    progress.setValue(allParts.size());
 
     // --- 7. Добавление точки "Загруженный пучок" ---
     if (!m_loaded_x.isEmpty()) {
@@ -2236,9 +2256,8 @@ void MainWindow::loadBeamFromFile()
         pd.x = m_loaded_x; pd.y = m_loaded_y; pd.xp = m_loaded_xp; pd.yp = m_loaded_yp;
         pd.energy = m_loaded_E; pd.charge = m_loaded_Q;
 
-        // <--- Заполняем Z и A для сырых данных, чтобы фильтр не ломался при выборе этой точки
-        int defaultZ = (m_multiProductCheck && m_multiProductCheck->isChecked()) ? uiZ : m_ZInput->text().toInt();
-        int defaultA = (m_multiProductCheck && m_multiProductCheck->isChecked()) ? uiA : m_AInput->text().toInt();
+        int defaultZ = isMultiProduct ? uiZ : m_ZInput->text().toInt();
+        int defaultA = isMultiProduct ? uiA : m_AInput->text().toInt();
         pd.Z.fill(defaultZ, pd.x.size());
         pd.A.fill(defaultA, pd.x.size());
 
@@ -2265,17 +2284,14 @@ void MainWindow::loadBeamFromFile()
                                      .arg(allParts.size()));
     }
 
-    // --- 10. Вывод статистики потерь и обновление таблицы ---
     if (m_useOptics && m_useOpticsCheck && m_useOpticsCheck->isChecked() && !m_distributions.isEmpty()) {
         printLossStatistics();
         updateStatsUI();
     }
 
-    // --- 11. Обновление новых UI элементов для мульти-продуктов ---
-    updateIsotopeStatsUI();     // <--- ОБНОВЛЕНИЕ ТАБЛИЦЫ ИЗОТОПОВ
-    updateFilterCombos();       // <--- ОБНОВЛЕНИЕ ВЫПАДАЮЩИХ СПИСКОВ ФИЛЬТРОВ
+    updateIsotopeStatsUI();
+    updateFilterCombos();
 
-    // --- 12. Показать окно траекторий (если есть живые частицы) ---
     if (m_useOptics && m_useOpticsCheck && m_useOpticsCheck->isChecked() && !m_allXZ.isEmpty()) {
         showTrajectories();
     }
@@ -2542,11 +2558,9 @@ double MainWindow::referenceMassAmu() const
 // строит ОБА транспорта из одних и тех же опорных параметров
 void MainWindow::rebuildTransport()
 {
-    const double refE = m_meanInput->text().toDouble() / 1000.0;   // МэВ
-    const double refM = referenceMassAmu();
-    const int    refQ = refCharge();
-    m_separator = m_separatorConfig.buildSeparator(refE, refM, refQ);
-    m_fieldLine = buildFieldLine(m_separatorConfig, refE, refM, refQ, true);
+    // Теперь сборщики не требуют опорных параметров!
+    m_separator = m_separatorConfig.buildSeparator();
+    m_fieldLine = buildFieldLine(m_separatorConfig, true);
     updateSeparatorScheme();
 }
 

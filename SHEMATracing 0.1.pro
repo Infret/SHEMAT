@@ -51,6 +51,7 @@ HEADERS += \
     optimizationdialog.h \
     periodictable.h \
     scattering.h \
+    separator/bendmodel.h \
     separator/fieldadapter.h \
     separator/fieldcore.h \
     separator/fieldelement.h \

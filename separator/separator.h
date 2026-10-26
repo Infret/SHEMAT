@@ -30,6 +30,8 @@ public:
     const std::vector<SeparatorElement>& getElements() const { return m_elements; }
     int elementsCount() const { return static_cast<int>(m_elements.size()); }
 
+    void registerLoss(const QString& name, int elementIndex) const;
+
 private:
     std::vector<SeparatorElement> m_elements;
     mutable QVector<LossStat> m_lossStats;   // статистика потерь (mutable, чтобы менять в const transport)

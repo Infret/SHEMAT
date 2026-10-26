@@ -97,3 +97,16 @@ void Separator::transport(Particle& p) const
         }
     }
 }
+void Separator::registerLoss(const QString& name, int elementIndex) const
+{
+    for (auto& s : m_lossStats) {
+        if (s.elementName == name) { s.lostCount++; m_totalLost++; return; }
+    }
+    LossStat st;
+    st.elementName = name;
+    st.pointName = name;
+    st.lostCount = 1;
+    st.elementIndex = elementIndex;
+    m_lossStats.append(st);
+    m_totalLost++;
+}

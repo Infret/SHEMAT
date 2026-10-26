@@ -26,8 +26,7 @@ bool SeparatorConfig::loadFromFile(const QString& filename)
     return parseFromString(lines.join('\n'));
 }
 
-bool SeparatorConfig::parseFromString(const QString& text)
-{
+bool SeparatorConfig::parseFromString(const QString& text) {
     m_commands.clear();
     QStringList lines = text.split('\n', Qt::SkipEmptyParts);
 
@@ -42,54 +41,43 @@ bool SeparatorConfig::parseFromString(const QString& text)
         ConfigCommand cmd;
         cmd.type = type;
 
-
-
         if (type == "DRIFT") {
             if (parts.size() < 2) continue;
-            bool ok;
-            double len = parts[1].toDouble(&ok);
-            if (!ok) continue;
-            cmd.params << len;
-            if (parts.size() >= 3) {
-                double aper = parts[2].toDouble(&ok);
-                if (ok) cmd.params << aper;
-                else cmd.params << 0.1;
-            } else {
-                cmd.params << 0.1; // апертура по умолчанию
-            }
+            double len = parts[1].toDouble();
+            double aper = (parts.size() >= 3) ? parts[2].toDouble() : 0.1;
+            cmd.params << len << aper;
         }
         else if (type == "QUAD") {
             if (parts.size() < 4) continue;
             double len = parts[1].toDouble();
             double fieldTl = parts[2].toDouble();
             double aperture = parts[3].toDouble();
-            cmd.params << len << fieldTl << aperture;
-            if (parts.size() >= 5) {
-                double fringe = parts[4].toDouble();
-                cmd.params << fringe;
-            } else {
-                cmd.params << 0.2; // fringe по умолчанию
-            }
+            double fringe = (parts.size() >= 5) ? parts[4].toDouble() : 0.2;
+            cmd.params << len << fieldTl << aperture << fringe;
         }
         else if (type == "DEFLECTOR") {
-            if (parts.size() < 5) continue;
-            double radius = parts[1].toDouble();
-            double angleDeg = parts[2].toDouble();
-            double gap = parts[3].toDouble();
-            double voltage = parts[4].toDouble();
-            cmd.params << radius << angleDeg << gap << voltage;
+            // Новый формат: DEFLECTOR U_кВ R_m угол_град gap x_min x_max
+            if (parts.size() < 7) continue;
+            double U = parts[1].toDouble();
+            double R = parts[2].toDouble();
+            double angle = parts[3].toDouble();
+            double gap = parts[4].toDouble();
+            double xmin = parts[5].toDouble();
+            double xmax = parts[6].toDouble();
+            cmd.params << U << R << angle << gap << xmin << xmax;
         }
         else if (type == "DIPOLE") {
-            // Формат: DIPOLE B_Тл угол_град зазор угол_входа угол_выхода renter rexit
-            if (parts.size() < 8) continue;
-            double B_T     = parts[1].toDouble();   // поле в Тесла
-            double angleDeg = parts[2].toDouble();
-            double gap      = parts[3].toDouble();
-            double entranceDeg = parts[4].toDouble();
-            double exitDeg     = parts[5].toDouble();
-            double renter      = parts[6].toDouble();
-            double rexit       = parts[7].toDouble();
-            cmd.params << B_T << angleDeg << gap << entranceDeg << exitDeg << renter << rexit;
+            // Новый формат: DIPOLE B_Тл R_m угол_град gap e1_град e2_град x_min x_max
+            if (parts.size() < 9) continue;
+            double B = parts[1].toDouble();
+            double R = parts[2].toDouble();
+            double angle = parts[3].toDouble();
+            double gap = parts[4].toDouble();
+            double e1 = parts[5].toDouble();
+            double e2 = parts[6].toDouble();
+            double xmin = parts[7].toDouble();
+            double xmax = parts[8].toDouble();
+            cmd.params << B << R << angle << gap << e1 << e2 << xmin << xmax;
         }
         else {
             qDebug() << "Unknown command:" << type;
@@ -100,109 +88,45 @@ bool SeparatorConfig::parseFromString(const QString& text)
     return true;
 }
 
-Separator SeparatorConfig::buildSeparator(double energy, double mass, int charge) const
-{
-
-//    qDebug() << "=== buildSeparator: количество команд =" << m_commands.size();
-    for (int i = 0; i < m_commands.size(); ++i) {
-        qDebug() << "  команда" << i << "тип" << m_commands[i].type << "params" << m_commands[i].params;
-    }
-
-
+Separator SeparatorConfig::buildSeparator() const {
     Separator sep;
-    const double degToRad = M_PI / 180.0;
-
-
-
-
-    // Счётчики для уникальных имён (опционально)
     int driftCount = 0, quadCount = 0, deflCount = 0, dipoleCount = 0;
 
     for (const auto& cmd : m_commands) {
         if (cmd.type == "DRIFT") {
-            double len = cmd.params[0];
-            double aper = cmd.params[1];
             SeparatorElement elem(ElementType::Drift);
-            elem.setParameters(len, aper);
+            elem.setParameters(cmd.params[0], cmd.params[1]);
             elem.setName(QString("Drift%1").arg(driftCount++));
             sep.addElement(elem);
         }
         else if (cmd.type == "QUAD") {
-            qDebug() << "Создаём квадруполь" << cmd.params;
-            double len = cmd.params[0];
-            double fieldTl = cmd.params[1];
-            double aperture = cmd.params[2];
-            double fringe = cmd.params[3];
-            double gradient = (fieldTl * 10.0) / aperture; // кГс/м
+            double gradient = (cmd.params[1] * 10.0) / cmd.params[2]; // кГс/м
             SeparatorElement elem(ElementType::Quadrupole);
-            elem.setParameters(len, gradient, aperture);
-            // Если есть метод setFringe, можно вызвать
-//            elem.setFringe(fringe);
+            elem.setParameters(cmd.params[0], gradient, cmd.params[2], cmd.params[3]);
             elem.setName(QString("Quad%1").arg(quadCount++));
             sep.addElement(elem);
         }
         else if (cmd.type == "DEFLECTOR") {
-
-            double radius = cmd.params[0];
-            double angleDeg = cmd.params[1];
-            double gap = cmd.params[2];
-            double voltage = cmd.params[3];
-            double length = std::abs(radius) * angleDeg * degToRad;
-
-//            qDebug() << "Создаём дефлектор: radius=" << radius << "angleDeg=" << angleDeg << "length=" << length;
-
             SeparatorElement elem(ElementType::ElectrostaticDeflector);
-            elem.setParameters(length, gap, voltage, 0.15);
+            // U, R, angle, gap, xmin, xmax
+            elem.setParameters(cmd.params[0], cmd.params[1], cmd.params[2],
+                               cmd.params[3], cmd.params[4], cmd.params[5]);
             elem.setName(QString("Deflector%1").arg(deflCount++));
             sep.addElement(elem);
         }
         else if (cmd.type == "DIPOLE") {
-            double B_T      = cmd.params[0];      // Тл
-            double angleDeg = cmd.params[1];
-            double gap      = cmd.params[2];
-            double entranceDeg = cmd.params[3];
-            double exitDeg     = cmd.params[4];
-            double renter      = cmd.params[5];
-            double rexit       = cmd.params[6];
-
-            // Магнитная жёсткость референсной частицы (кГс·м)
-            double brho_ref = 1.439 * std::sqrt(mass * energy) / std::abs(charge);
-            double B_kG     = B_T * 10.0;                // Тл → кГс
-            double R_ref    = brho_ref / B_kG;           // радиус референсной траектории (м)
-
-            double angleRad = angleDeg * degToRad;
-            double arc_length = R_ref * angleRad;        // длина дуги
-            double entranceRad = entranceDeg * degToRad;
-            double exitRad     = exitDeg * degToRad;
-
-            // Входной край
-            if (std::abs(entranceRad) > 1e-6) {
-                SeparatorElement edge(ElementType::DipoleEdge);
-                edge.setName(QString("DipoleEntranceEdge%1").arg(dipoleCount));
-                edge.setParameters(entranceRad, R_ref, renter);
-                sep.addElement(edge);
-            }
-
-            // Тело диполя — передаём поле B
             SeparatorElement dipole(ElementType::Dipole);
-            dipole.setName(QString("Dipole%1").arg(dipoleCount));
-            double xAperture = 0.1;
-            double yAperture = gap / 2.0;
-            dipole.setParameters(arc_length, gap, B_T, xAperture, yAperture);
+            // B, R, angle, gap, e1, e2, xmin, xmax
+            dipole.setParameters(cmd.params[0], cmd.params[1], cmd.params[2],
+                                 cmd.params[3], cmd.params[4], cmd.params[5],
+                                 cmd.params[6], cmd.params[7]);
+            dipole.setName(QString("Dipole%1").arg(dipoleCount++));
             sep.addElement(dipole);
-
-            // Выходной край
-            if (std::abs(exitRad) > 1e-6) {
-                SeparatorElement edge(ElementType::DipoleEdge);
-                edge.setName(QString("DipoleExitEdge%1").arg(dipoleCount));
-                edge.setParameters(-exitRad, R_ref, rexit);
-                sep.addElement(edge);
-            }
-            dipoleCount++;
         }
     }
     return sep;
 }
+
 QVector<OptimizableParam> SeparatorConfig::getOptimizableParams() const
 {
     QVector<OptimizableParam> result;

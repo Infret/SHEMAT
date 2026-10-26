@@ -5,11 +5,11 @@
 #include <QVector>
 #include "separator.h"
 
-// Структура для хранения одной команды из конфигурационного файла
 struct ConfigCommand {
     QString type;          // "DRIFT", "QUAD", "DEFLECTOR", "DIPOLE"
-    QVector<double> params; // параметры команды (длины, поля, углы и т.д.)
+    QVector<double> params;
 };
+
 struct OptimizableParam {
     QString elementName;
     QString paramName;
@@ -27,15 +27,15 @@ public:
     SeparatorConfig();
     bool loadFromFile(const QString& filename);
     bool parseFromString(const QString& text);
-    Separator buildSeparator(double energy, double mass, int charge) const;
 
+    Separator buildSeparator() const;
+
+    const QVector<ConfigCommand>& commands() const { return m_commands; }
     QVector<OptimizableParam> getOptimizableParams() const;
-
     void updateParam(int commandIndex, int paramIndex, double newValue);
 
 private:
     QVector<ConfigCommand> m_commands;
-
 };
 
 #endif // SEPARATORCONFIG_H
